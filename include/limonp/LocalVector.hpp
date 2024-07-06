@@ -51,16 +51,19 @@ class LocalVector {
   };
  public:
   LocalVector<T>& operator = (const LocalVector<T>& vec) {
+      if(this == &vec){
+          return *this;
+      }
     clear();
     size_ = vec.size();
     capacity_ = vec.capacity();
     if(vec.buffer_ == vec.ptr_) {
-      memcpy(static_cast<void*>(buffer_), vec.buffer_, sizeof(T) * size_);
+      memcpy(buffer_, vec.buffer_, sizeof(T) * size_);
       ptr_ = buffer_;
     } else {
       ptr_ = (T*) malloc(vec.capacity() * sizeof(T));
       assert(ptr_);
-      memcpy(static_cast<void*>(ptr_), vec.ptr_, vec.size() * sizeof(T));
+      memcpy(ptr_, vec.ptr_, vec.size() * sizeof(T));
     }
     return *this;
   }
@@ -92,7 +95,7 @@ class LocalVector {
     assert(next);
     T * old = ptr_;
     ptr_ = next;
-    memcpy(static_cast<void*>(ptr_), old, sizeof(T) * capacity_);
+    memcpy(ptr_, old, sizeof(T) * capacity_);
     capacity_ = size;
     if(old != buffer_) {
       free(old);

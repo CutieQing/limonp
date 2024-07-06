@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.0)
 
 PROJECT(limonp
-        LANGUAGES CXX)
+        LANGUAGES CXX
+				VERSION 1.0.0)
 
 ################
 # cmake config #
@@ -15,44 +16,78 @@ set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL "C++ Extensions")
 # dependency #
 ##############
 include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
 ##########
 # target #
 ##########
 
-add_library(${PROJECT_NAME} INTERFACE)
-add_library(${PROJECT_NAME}::${PROJECT_NAME} ALIAS ${PROJECT_NAME})
-
-target_include_directories(${PROJECT_NAME}
-                           INTERFACE
+file(GLOB_RECURSE LIMONP_SOURCES
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/**/*.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/**/*.c"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+	"${CMAKE_CURRENT_SOURCE_DIR}/src/*.c")
+add_library(${PROJECT_NAME} SHARED ${LIMONP_SOURCES})
+target_include_directories(${PROJECT_NAME} PUBLIC                    
                                $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
                                $<INSTALL_INTERFACE:${CMAKE_INSTALL_FULL_INCLUDEDIR}>)
-
-########
-# test #
-########
-
-ENABLE_TESTING()
-
-ADD_SUBDIRECTORY(test)
-
-ADD_TEST(NAME ./test/test.run COMMAND ./test/test.run)
-ADD_TEST(NAME ./test/demo COMMAND ./test/demo)
-ADD_TEST(NAME ./test/thread_pool_demo COMMAND ./test/thread_pool_demo)
 
 ###########
 # install #
 ###########
 
-include(GNUInstallDirs)
-
+# 安装目标和导出设置
 install(TARGETS ${PROJECT_NAME}
-        EXPORT ${PROJECT_NAME})
+        EXPORT ${PROJECT_NAME}Targets
+				LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+        RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+        INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-install(EXPORT ${PROJECT_NAME}
-        DESTINATION ${CMAKE_INSTALL_DATADIR}/${PROJECT_NAME}/cmake/
-        NAMESPACE ${PROJECT_NAME}::
-        FILE ${PROJECT_NAME}-config.cmake)
-
-install(DIRECTORY include/
+# 安装头文件
+install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+# 安装配置文件和导出目标
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+    VERSION ${PROJECT_VERSION}
+    COMPATIBILITY AnyNewerVersion
+)
+
+install(EXPORT ${PROJECT_NAME}Targets
+    FILE ${PROJECT_NAME}Targets.cmake
+    NAMESPACE ${PROJECT_NAME}::
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+)
+
+configure_file(${PROJECT_NAME}Config.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    @ONLY
+)
+
+install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
+)
+
+export(EXPORT ${PROJECT_NAME}Targets
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Targets.cmake"
+    NAMESPACE ${PROJECT_NAME}::
+)
+
+#############
+# FetchContent #
+#############
+
+# 处理被FetchContent引入的情况
+if(CMAKE_SOURCE_DIR STREQUAL PROJECT_SOURCE_DIR)
+    set(FETCHCONTENT_QUIET OFF)
+else()
+    set(FETCHCONTENT_QUIET ON)
+endif()
+
+if(NOT FETCHCONTENT_QUIET)
+    message(STATUS "Fetching ${PROJECT_NAME}")
+endif()

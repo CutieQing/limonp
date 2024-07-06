@@ -4,6 +4,11 @@
  ************************************/
 #ifndef LIMONP_STR_FUNCTS_H
 #define LIMONP_STR_FUNCTS_H
+#include <stdint.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <memory.h>
+#include <sys/types.h>
 #include <fstream>
 #include <iostream>
 #include <string>
@@ -11,16 +16,9 @@
 #include <algorithm>
 #include <cctype>
 #include <map>
-#include <cassert>
-#include <ctime>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdarg.h>
-#include <memory.h>
 #include <functional>
 #include <locale>
 #include <sstream>
-#include <sys/types.h>
 #include <iterator>
 #include <algorithm>
 #include "StdExtension.hpp"
@@ -82,31 +80,16 @@ inline string& Lower(string& str) {
 
 inline bool IsSpace(unsigned c) {
   // when passing large int as the argument of isspace, it core dump, so here need a type cast.
-  return c > 0xff ? false : std::isspace(c & 0xff) != 0;
+  return c > 0xff ? false : std::isspace(c & 0xff);
 }
 
 inline std::string& LTrim(std::string &s) {
-#if defined(_MSC_VER) && _MSC_VER >= 1910
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }));
-#else
-  // Use lower version of MSVC
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<unsigned, bool>(IsSpace))));
-#endif
-    return s;
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::ptr_fun<unsigned, bool>(IsSpace))));
+  return s;
 }
 
 inline std::string& RTrim(std::string &s) {
-#if defined(_MSC_VER) && _MSC_VER >= 1910
-  // Use MSVC 2017 or higher version
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }).base(), s.end());
-#else
-  // Use lower version of MSVC
   s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::ptr_fun<unsigned, bool>(IsSpace))).base(), s.end());
-#endif
   return s;
 }
 
@@ -114,24 +97,14 @@ inline std::string& Trim(std::string &s) {
   return LTrim(RTrim(s));
 }
 
-inline std::string& LTrim(std::string& s, char x) {
-#if defined(_MSC_VER) && _MSC_VER >= 1910
-  s.erase(s.begin(), std::find_if(s.begin(), s.end(),
-      [x](unsigned char c) { return !std::isspace(c) && c != x; }));
-#else
+inline std::string& LTrim(std::string & s, char x) {
   s.erase(s.begin(), std::find_if(s.begin(), s.end(), std::not1(std::bind2nd(std::equal_to<char>(), x))));
-#endif
-    return s;
+  return s;
 }
 
-inline std::string& RTrim(std::string& s, char x) {
-#if defined(_MSC_VER) && _MSC_VER >= 1910
-    s.erase(std::find_if(s.rbegin(), s.rend(),
-        [x](unsigned char c) { return !std::isspace(c) && c != x; }).base(), s.end());
-#else
-    s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::bind2nd(std::equal_to<char>(), x))).base(), s.end());
-#endif
-    return s;
+inline std::string& RTrim(std::string & s, char x) {
+  s.erase(std::find_if(s.rbegin(), s.rend(), std::not1(std::bind2nd(std::equal_to<char>(), x))).base(), s.end());
+  return s;
 }
 
 inline std::string& Trim(std::string &s, char x) {
@@ -222,15 +195,15 @@ bool Utf8ToUnicode(const string& str, Uint16Container& vec) {
 }
 
 template <class Uint32Container>
-bool Utf8ToUnicode32(const string& str, Uint32Container& vec) {
+bool Utf8ToUnicode32(const char * str, size_t size, Uint32Container& vec) {
   uint32_t tmp;
   vec.clear();
-  for(size_t i = 0; i < str.size();) {
+  for(size_t i = 0; i < size;) {
     if(!(str[i] & 0x80)) { // 0xxxxxxx
       // 7bit, total 7bit
       tmp = (uint8_t)(str[i]) & 0x7f;
       i++;
-    } else if ((uint8_t)str[i] <= 0xdf && i + 1 < str.size()) { // 110xxxxxx
+    } else if ((uint8_t)str[i] <= 0xdf && i + 1 < size) { // 110xxxxxx
       // 5bit, total 5bit
       tmp = (uint8_t)(str[i]) & 0x1f;
 
@@ -238,7 +211,7 @@ bool Utf8ToUnicode32(const string& str, Uint32Container& vec) {
       tmp <<= 6;
       tmp |= (uint8_t)(str[i+1]) & 0x3f;
       i += 2;
-    } else if((uint8_t)str[i] <= 0xef && i + 2 < str.size()) { // 1110xxxxxx
+    } else if((uint8_t)str[i] <= 0xef && i + 2 < size) { // 1110xxxxxx
       // 4bit, total 4bit
       tmp = (uint8_t)(str[i]) & 0x0f;
 
@@ -251,7 +224,7 @@ bool Utf8ToUnicode32(const string& str, Uint32Container& vec) {
       tmp |= (uint8_t)(str[i+2]) & 0x3f;
 
       i += 3;
-    } else if((uint8_t)str[i] <= 0xf7 && i + 3 < str.size()) { // 11110xxxx
+    } else if((uint8_t)str[i] <= 0xf7 && i + 3 < size) { // 11110xxxx
       // 3bit, total 3bit
       tmp = (uint8_t)(str[i]) & 0x07;
 
@@ -274,6 +247,23 @@ bool Utf8ToUnicode32(const string& str, Uint32Container& vec) {
     vec.push_back(tmp);
   }
   return true;
+}
+
+template <class Uint32Container>
+bool Utf8ToUnicode32(const string& str, Uint32Container& vec) {
+    return Utf8ToUnicode32(str.data(), str.size(), vec);
+}
+
+inline int UnicodeToUtf8Bytes(uint32_t ui){
+    if(ui <= 0x7f) {
+        return 1;
+    } else if(ui <= 0x7ff) {
+        return 2;
+    } else if(ui <= 0xffff) {
+        return 3;
+    } else {
+        return 4;
+    }
 }
 
 template <class Uint32ContainerConIter>
@@ -373,26 +363,13 @@ void GBKTrans(Uint16ContainerConIter begin, Uint16ContainerConIter end, string& 
 /*
  * format example: "%Y-%m-%d %H:%M:%S"
  */
-inline void GetTime(const string& format, string&  timeStr) {
-  time_t timeNow;
-  time(&timeNow);
-
-  struct tm tmNow;
-
-  #if defined(_WIN32) || defined(_WIN64)
-  errno_t e = localtime_s(&tmNow, &timeNow);
-  assert(e = 0);
-  #else
-  struct tm * tm_tmp = localtime_r(&timeNow, &tmNow);
-  assert(tm_tmp != nullptr);
-  #endif
-
-  timeStr.resize(64);
-  
-  size_t len = strftime((char*)timeStr.c_str(), timeStr.size(), format.c_str(), &tmNow);
-  
-  timeStr.resize(len);
-}
+// inline void GetTime(const string& format, string&  timeStr) {
+//   time_t timeNow;
+//   time(&timeNow);
+//   timeStr.resize(64);
+//   size_t len = strftime((char*)timeStr.c_str(), timeStr.size(), format.c_str(), localtime(&timeNow));
+//   timeStr.resize(len);
+// }
 
 inline string PathJoin(const string& path1, const string& path2) {
   if(EndsWith(path1, "/")) {

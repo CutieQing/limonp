@@ -14,21 +14,20 @@
 #error "XCHECK has been defined already"
 #endif // XCHECK
 
-#define XLOG(level) limonp::Logger(limonp::LL_##level, __FILE__, __LINE__).Stream() 
+#define XLOG(level) limonp::Logger(limonp::LL_##level, __FILE__, __LINE__).Stream()
 #define XCHECK(exp) if(!(exp)) XLOG(FATAL) << "exp: ["#exp << "] false. "
 
 namespace limonp {
 
 enum {
-  LL_DEBUG = 0, 
-  LL_INFO = 1, 
-  LL_WARNING = 2, 
-  LL_ERROR = 3, 
+  LL_DEBUG = 0,
+  LL_INFO = 1,
+  LL_WARNING = 2,
+  LL_ERROR = 3,
   LL_FATAL = 4,
 }; // enum
 
 static const char * LOG_LEVEL_ARRAY[] = {"DEBUG","INFO","WARN","ERROR","FATAL"};
-static const char * LOG_TIME_FORMAT = "%Y-%m-%d %H:%M:%S";
 
 class Logger {
  public:
@@ -40,28 +39,20 @@ class Logger {
      }
 #endif
     assert(level_ <= sizeof(LOG_LEVEL_ARRAY)/sizeof(*LOG_LEVEL_ARRAY));
-    
     char buf[32];
-    
-    time_t timeNow;
-    time(&timeNow);
-
-    struct tm tmNow;
-
-    #if defined(_WIN32) || defined(_WIN64)
-    errno_t e = localtime_s(&tmNow, &timeNow);
-    assert(e == 0);
-    #else
-    struct tm * tm_tmp = localtime_r(&timeNow, &tmNow);
-    assert(tm_tmp != nullptr);
-    #endif
-
-    strftime(buf, sizeof(buf), LOG_TIME_FORMAT, &tmNow);
-
-    stream_ << buf 
-      << " " << filename 
-      << ":" << lineno 
-      << " " << LOG_LEVEL_ARRAY[level_] 
+    time_t now;
+    time(&now);
+    struct tm result;
+#if defined(_WIN32) || defined(_WIN64)
+    localtime_s(&result, &now);
+#else
+    localtime_r(&now, &result);
+#endif
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &result);
+    stream_ << buf
+      << " " << filename
+      << ":" << lineno
+      << " " << LOG_LEVEL_ARRAY[level_]
       << " ";
   }
   ~Logger() {

@@ -379,7 +379,7 @@ class MD5 {
   }
 };
 
-bool md5String(const char* str, std::string& res) {
+inline bool md5String(const char* str, std::string& res) {
   if (NULL == str) {
     res = "";
     return false;
@@ -396,7 +396,7 @@ bool md5String(const char* str, std::string& res) {
   return true;
 }
 
-bool md5File(const char* filepath, std::string& res) {
+inline bool md5File(const char* filepath, std::string& res) {
   if (NULL == filepath || strcmp(filepath, "") == 0) {
     res = "";
     return false;
